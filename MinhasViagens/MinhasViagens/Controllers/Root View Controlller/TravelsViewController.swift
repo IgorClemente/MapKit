@@ -11,7 +11,6 @@ import UIKit
 class TravelsViewController: UITableViewController {
 
     @IBOutlet weak var travelsTableView: UITableView?
-
     var travels:[Dictionary<String,String>]?
     
     override func viewDidLoad() {
@@ -20,6 +19,7 @@ class TravelsViewController: UITableViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)
+        
         guard let travelsRecovery = app.recovery() else {
             return
         }
@@ -63,17 +63,34 @@ extension TravelsViewController {
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         
         if editingStyle == .delete {
-            guard var travels = self.travels else {
+            guard var _ = self.travels else {
                 return
             }
             
             app.delete(registreFor: indexPath.row, completation: { (delete) in
                 if delete {
-                   travels.remove(at: indexPath.row)
+                   self.travels = app.recovery()
+                   tableView.deleteRows(at: [indexPath], with: .fade)
                    tableView.reloadData()
                 }
             })
         }
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard let travels = self.travels else {
+            return
+        }
+        let travelSelected = travels[indexPath.row]
+        performSegue(withIdentifier: "presentMap", sender: travelSelected)
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        guard let destination = segue.destination as? MapViewController,
+              let travelInformation = sender as? [String:String]  else {
+            return
+        }
+        destination.travelInformation = travelInformation
     }
 }
 

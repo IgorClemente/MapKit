@@ -13,16 +13,45 @@ class MapViewController: UIViewController {
 
     @IBOutlet weak var mainMap:MKMapView?
     
-    var locationManager: CLLocationManager = CLLocationManager()
-    var locationGeocoder: CLGeocoder       = CLGeocoder()
+    var travelInformation:Dictionary<String,String>?
+    
+    private var locationManager: CLLocationManager = CLLocationManager()
+    private var locationGeocoder: CLGeocoder       = CLGeocoder()
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        guard let map = self.mainMap else {
+            return
+        }
+        
+        if let information = self.travelInformation {
+           guard let latitude  = information["latitude"],
+                 let longitude = information["longitude"],
+                 let latitudeConverted  = Double(latitude),
+                 let longitudeConverted = Double(longitude),
+                 let address   = information["address"] else {
+               return
+           }
+           
+           let latitudeDegrees: CLLocationDegrees  = latitudeConverted
+           let longitudeDegrees: CLLocationDegrees = longitudeConverted
+            
+           let coordinate = CLLocationCoordinate2DMake(latitudeDegrees,longitudeDegrees)
+            
+           let travelAnnotation = MKPointAnnotation()
+           travelAnnotation.coordinate = coordinate
+           travelAnnotation.title      = address
+           travelAnnotation.subtitle   = address
+            
+           map.addAnnotation(travelAnnotation)
+           map.showAnnotations(map.annotations, animated: true)
+           return
+        }
+        
         self.searchLocation()
-        
-        let longGesturePin = UILongPressGestureRecognizer(target: self, action: #selector(tapAddPin(gesture:)))
+        let longGesturePin = UILongPressGestureRecognizer(target: self,
+                                                          action: #selector(tapAddPin(gesture:)))
         longGesturePin.minimumPressDuration = 1.0
-        
         mainMap?.addGestureRecognizer(longGesturePin)
     }
     
@@ -121,5 +150,25 @@ extension MapViewController: CLLocationManagerDelegate, MKMapViewDelegate {
             default:
                 break
         }
+    }
+    
+    func prepareMap(For location: CLLocation) -> Void {
+        guard let map = self.mainMap else {
+            return
+        }
+        
+        let coordinate      = location.coordinate
+        let coordinateDelta = MKCoordinateSpanMake(0.01, 0.01)
+        let region = MKCoordinateRegionMake(coordinate, coordinateDelta)
+        map.setRegion(region, animated: true)
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let locationBest = locations.last else {
+            return
+        }
+        
+        locationManager.stopUpdatingLocation()
+        self.prepareMap(For: locationBest)
     }
 }
